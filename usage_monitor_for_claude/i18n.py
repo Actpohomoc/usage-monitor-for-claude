@@ -34,10 +34,12 @@ def detect_lang_code(lang: str) -> str:
     parts = normalized.split('_', 1)
     base = parts[0].lower()
 
-    # locale.normalize() doesn't resolve all Windows names (e.g. 'Spanish_Mexico').
-    # If the base is not a short ISO 639 code, retry with just the language word.
     if len(base) > 3:
         base = locale.normalize(parts[0]).split('.')[0].split('_')[0].lower()
+
+    # Manual overrides for Windows locales that do not normalize cleanly to ISO codes.
+    if base == 'ukrainian':
+        base = 'uk'
 
     region = parts[1] if len(parts) > 1 and len(base) <= 3 else ''
 

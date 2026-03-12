@@ -15,7 +15,7 @@ from unittest.mock import patch
 
 from usage_monitor_for_claude.i18n import LOCALE_DIR, detect_lang_code, load_translations
 
-MOCK_LOCALE_FILES = ['en.json', 'de.json', 'es.json', 'fr.json', 'ja.json', 'pt-BR.json', 'zh-CN.json', 'zh-TW.json']
+MOCK_LOCALE_FILES = ['en.json', 'de.json', 'es.json', 'fr.json', 'ja.json', 'pt-BR.json', 'uk.json', 'zh-CN.json', 'zh-TW.json']
 
 NORMALIZE_MAP = {
     'de_DE': 'de_DE.ISO8859-1',
@@ -29,6 +29,8 @@ NORMALIZE_MAP = {
     'German': 'de_DE.ISO8859-1',
     'Spanish_Mexico': 'Spanish_Mexico',
     'Spanish': 'es_ES.ISO8859-1',
+    'Ukrainian_Ukraine': 'uk_UA.UTF-8',
+    'Ukrainian': 'uk_UA.UTF-8',
     '': '',
 }
 
