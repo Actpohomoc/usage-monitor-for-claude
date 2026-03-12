@@ -1,3 +1,5 @@
+🇺🇦 [Українською](README.uk.md) | 🇬🇧 [English](README.md)
+
 # Usage Monitor for Claude
 
 **Monitor your Claude rate limits in real time - right from your Windows system tray.**
