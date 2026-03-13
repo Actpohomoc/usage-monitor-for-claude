@@ -29,8 +29,8 @@ NORMALIZE_MAP = {
     'German': 'de_DE.ISO8859-1',
     'Spanish_Mexico': 'Spanish_Mexico',
     'Spanish': 'es_ES.ISO8859-1',
-    'Ukrainian_Ukraine': 'uk_UA.UTF-8',
-    'Ukrainian': 'uk_UA.UTF-8',
+    'Ukrainian_Ukraine': 'Ukrainian_Ukraine',
+    'Ukrainian': 'Ukrainian',
     '': '',
 }
 
@@ -92,6 +92,10 @@ class TestDetectLangCode(unittest.TestCase):
     def test_spanish_mexico_windows_name(self, _mock_norm):
         """Windows-style name without regional file falls back to base."""
         self.assertEqual(detect_lang_code('Spanish_Mexico'), 'es')
+
+    def test_ukrainian_windows_name(self, _mock_norm):
+        """Windows-style name with manual override resolves correctly."""
+        self.assertEqual(detect_lang_code('Ukrainian_Ukraine'), 'uk')
 
     def test_base_code_without_region(self, _mock_norm):
         """Base language code without region resolves directly."""

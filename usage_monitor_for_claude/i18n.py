@@ -34,6 +34,8 @@ def detect_lang_code(lang: str) -> str:
     parts = normalized.split('_', 1)
     base = parts[0].lower()
 
+    # On Windows, os.getlocale() returns e.g. 'German_Germany', and locale.normalize() fails to rewrite it to an ISO code,
+    # so base becomes 'german'. Re-split using 'german' to hopefully trigger a match.
     if len(base) > 3:
         base = locale.normalize(parts[0]).split('.')[0].split('_')[0].lower()
 
