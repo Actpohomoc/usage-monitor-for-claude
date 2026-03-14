@@ -1,3 +1,5 @@
+﻿[Українською](README.uk.md)
+
 # Usage Monitor for Claude
 
 **Monitor your Claude rate limits in real time - right from your Windows system tray.**
@@ -65,7 +67,7 @@ This tool handles your Claude Code OAuth token, so you should be able to verify 
 
 Windows may hide new tray icons by default. To keep the icon always visible:
 
-1. Right-click the **taskbar** → **Taskbar settings**
+1. Right-click the **taskbar** в†’ **Taskbar settings**
 2. Expand **Other system tray icons** (Win 11) or **Select which icons appear on the taskbar** (Win 10)
 3. Toggle **UsageMonitorForClaude** to **On**
 
@@ -135,11 +137,11 @@ The Anthropic API does not include currency information, so the app detects the 
 
 | Key | Default | Description |
 |-----|---------|-------------|
-| `currency_symbol` | *(auto-detected)* | Override the auto-detected currency symbol (e.g., `"$"`, `"€"`, `"¥"`) |
+| `currency_symbol` | *(auto-detected)* | Override the auto-detected currency symbol (e.g., `"$"`, `"в‚¬"`, `"ВҐ"`) |
 
 ### Tray icon colors
 
-Override individual channels as RGBA arrays `[R, G, B, A]` (0–255). Unspecified keys keep their defaults.
+Override individual channels as RGBA arrays `[R, G, B, A]` (0вЂ“255). Unspecified keys keep their defaults.
 
 | Key | Default | Description |
 |-----|---------|-------------|
@@ -156,7 +158,7 @@ Override individual channels as RGBA arrays `[R, G, B, A]` (0–255). Unspecifie
 | `fg_heading` | `"#ffffff"` | Section headings |
 | `bar_bg` | `"#333333"` | Progress bar background |
 | `bar_fg` | `"#4a9eff"` | Progress bar fill |
-| `bar_fg_high` | `"#e05050"` | Progress bar fill when usage ≥ 80% |
+| `bar_fg_high` | `"#e05050"` | Progress bar fill when usage в‰Ґ 80% |
 
 </details>
 
@@ -227,3 +229,4 @@ MIT
 ## Disclaimer
 
 This is an independent, community-built project. It is **not** created, endorsed, or officially supported by [Anthropic](https://www.anthropic.com/). "Claude" and "Anthropic" are trademarks of Anthropic, PBC. Use of these names is solely for descriptive purposes to indicate compatibility.
+
