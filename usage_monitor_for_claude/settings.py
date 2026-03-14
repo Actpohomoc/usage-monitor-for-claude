@@ -35,7 +35,7 @@ _COLOR_KEYS = frozenset({'bg', 'fg', 'fg_dim', 'fg_heading', 'bar_bg', 'bar_fg',
 _ICON_KEYS = frozenset({'icon_light', 'icon_dark'})
 _THRESHOLD_KEYS = frozenset({'alert_thresholds_five_hour', 'alert_thresholds_seven_day'})
 _PERCENT_KEYS = frozenset({'alert_time_aware_below'})
-_STRING_KEYS = frozenset({'currency_symbol', 'language'})
+_STRING_KEYS = frozenset({'currency_symbol', 'language', 'on_reset_command', 'on_threshold_command'})
 _BOOL_KEYS = frozenset({'alert_time_aware'})
 
 
@@ -229,3 +229,9 @@ def get_alert_thresholds(variant_key: str) -> list[float]:
         API variant key, e.g. ``'five_hour'`` or ``'seven_day_sonnet'``.
     """
     return _ALERT_THRESHOLDS.get(variant_key, [])
+
+
+# ── Custom Commands ────────────────────────────────────────
+ON_RESET_COMMAND: str = _S.get('on_reset_command', '')
+ON_THRESHOLD_COMMAND: str = _S.get('on_threshold_command', '')
+

@@ -12,6 +12,9 @@ import sys
 import threading
 import time
 import traceback
+import subprocess
+import os
+
 from datetime import datetime, timezone
 from typing import Any
 
@@ -21,7 +24,7 @@ from .api import api_headers
 from .autostart import is_autostart_enabled, set_autostart, sync_autostart_path
 from .cache import UsageCache
 from .idle import get_idle_seconds, is_workstation_locked
-from .settings import ALERT_TIME_AWARE, ALERT_TIME_AWARE_BELOW, IDLE_PAUSE, POLL_ERROR, POLL_FAST, POLL_FAST_EXTRA, POLL_INTERVAL, get_alert_thresholds
+from .settings import ALERT_TIME_AWARE, ALERT_TIME_AWARE_BELOW, IDLE_PAUSE, POLL_ERROR, POLL_FAST, POLL_FAST_EXTRA, POLL_INTERVAL, get_alert_thresholds, ON_RESET_COMMAND, ON_THRESHOLD_COMMAND
 from .formatting import PERIOD_5H, PERIOD_7D, elapsed_pct, format_tooltip
 from .i18n import T
 from .popup import UsagePopup
@@ -177,8 +180,19 @@ class UsageMonitorForClaude:
         # Notify when quota resets after being nearly exhausted, but only if the other quota isn't blocking usage
         if self._prev_5h is not None and self._prev_5h > 95 and pct_5h < self._prev_5h and pct_7d < 99:
             self.icon.notify(T['notify_reset'], T['notify_reset_title'])
+            if ON_RESET_COMMAND:
+                try:
+                    subprocess.Popen(ON_RESET_COMMAND, shell=True, creationflags=subprocess.CREATE_NO_WINDOW)
+                except Exception:
+                    pass
+
         if self._prev_7d is not None and self._prev_7d > 98 and pct_7d < self._prev_7d and pct_5h < 99:
             self.icon.notify(T['notify_reset'], T['notify_reset_title'])
+            if ON_RESET_COMMAND:
+                try:
+                    subprocess.Popen(ON_RESET_COMMAND, shell=True, creationflags=subprocess.CREATE_NO_WINDOW)
+                except Exception:
+                    pass
 
         self._check_threshold_alerts(result.data)
 
@@ -227,6 +241,12 @@ class UsageMonitorForClaude:
                     T['notify_threshold_title'],
                 )
                 self._notified_thresholds[variant_key] = highest_exceeded
+
+                if ON_THRESHOLD_COMMAND:
+                    try:
+                        subprocess.Popen(ON_THRESHOLD_COMMAND, shell=True, creationflags=subprocess.CREATE_NO_WINDOW)
+                    except Exception:
+                        pass
             elif highest_exceeded < last_notified:
                 self._notified_thresholds[variant_key] = highest_exceeded
 

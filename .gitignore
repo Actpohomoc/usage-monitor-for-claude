@@ -9,6 +9,7 @@ __pycache__/
 .venv/
 venv/
 env/
+.env
 
 # PyInstaller build artifacts
 build/
@@ -25,3 +26,4 @@ Desktop.ini
 
 # Local experimental files
 github_discussions/
+claude_response.log

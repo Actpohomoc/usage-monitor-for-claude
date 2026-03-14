@@ -1,4 +1,4 @@
-﻿🇺🇦 [Українською](README.uk.md)
+🇺🇦 [Українською](README.uk.md)
 
 # Usage Monitor for Claude
 
@@ -158,7 +158,9 @@ Override individual channels as RGBA arrays `[R, G, B, A]` (0вЂ“255). Unspec
 | `fg_heading` | `"#ffffff"` | Section headings |
 | `bar_bg` | `"#333333"` | Progress bar background |
 | `bar_fg` | `"#4a9eff"` | Progress bar fill |
-| `bar_fg_high` | `"#e05050"` | Progress bar fill when usage в‰Ґ 80% |
+| `bar_fg_high` | `"#e05050"` | Progress bar fill when usage ≥ 80% |
+| `on_reset_command` | `""` | Shell command to execute when a quota resets (e.g., to run a local script) |
+| `on_threshold_command` | `""` | Shell command to execute when a usage threshold is reached |
 
 </details>
 
