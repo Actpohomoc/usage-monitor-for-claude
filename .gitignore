@@ -27,3 +27,4 @@ Desktop.ini
 # Local experimental files
 github_discussions/
 claude_response.log
+dist copy/UsageMonitorForClaude.exe

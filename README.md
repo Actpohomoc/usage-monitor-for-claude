@@ -162,6 +162,9 @@ Override individual channels as RGBA arrays `[R, G, B, A]` (0вЂ“255). Unspec
 | `on_reset_command` | `""` | Shell command to execute when a quota resets (e.g., to run a local script) |
 | `on_threshold_command` | `""` | Shell command to execute when a usage threshold is reached |
 
+> [!TIP]
+> Commands execute in the app's working directory. You can place portable scripts (e.g., [`claude_reset_hook.ps1`](claude_reset_hook.ps1)) and your [`.env`](.env.example) file directly next to the standalone EXE.
+
 </details>
 
 ---
