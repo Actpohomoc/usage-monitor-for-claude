@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
 Hook script called upon Claude quota reset.
 Pings Claude CLI in background and sends Telegram notification with the response.
@@ -24,7 +24,7 @@ if (-not ($TelegramBotToken -and $TelegramChatID)) {
 }
 
 # --- RANDOM PROMPTS ---
-$Prompts = @("hi", "hello", "ping", "status report", "help", "ready for work?", "test connection", "verify status")
+$Prompts = @("hi", "hello", "ping", "time?", "date?", "test connection", "verify connection")
 $RandomPrompt = $Prompts | Get-Random
 
 # --- START CLAUDE CLI ---
@@ -37,7 +37,8 @@ try {
     if (-not $ClaudeCmd) {
         $LocalBinPath = Join-Path $HOME ".local\bin\claude.exe"
         if (Test-Path $LocalBinPath) { $ExePath = $LocalBinPath }
-    } else {
+    }
+    else {
         $ExePath = if ($ClaudeCmd.Source) { $ClaudeCmd.Source } else { $ClaudeCmd.Name }
     }
 
@@ -53,23 +54,27 @@ try {
             $ClaudeResult = "Claude CLI timed out after 30 seconds."
             $ClaudeStatus = "Timeout"
             $Process | Stop-Process -Force
-        } elseif (Test-Path $LogFile) {
+        }
+        elseif (Test-Path $LogFile) {
             $Response = Get-Content $LogFile -Raw
             if ([string]::IsNullOrWhiteSpace($Response)) {
                 $ClaudeResult = "Claude started but returned no output."
                 $ClaudeStatus = "No Output"
-            } else {
+            }
+            else {
                 $ClaudeResult = $Response.Trim() -replace "`r", ""
             }
         }
         
         # Cleanup temp log
         if (Test-Path $LogFile) { Remove-Item $LogFile -Force }
-    } else {
+    }
+    else {
         $ClaudeResult = "Claude CLI not found."
         $ClaudeStatus = "Not Found"
     }
-} catch {
+}
+catch {
     $ClaudeResult = "Failed to start Claude CLI: $_"
     $ClaudeStatus = "Error"
 }
@@ -92,14 +97,15 @@ $Warning = [char]::ConvertFromUtf32(0x26A0)
 
 if ($ClaudeStatus -eq "OK") {
     $HtmlMessage = "$Rocket <b>Claude quotas have been reset!</b>`nTime to resume tasks.`n`n$Robot <b>Ping:</b> <code>$SafePing</code>`n`n$Check <b>Response:</b>`n<pre>$SafeResult</pre>"
-} else {
+}
+else {
     $HtmlMessage = "$Rocket <b>Claude quotas have been reset!</b>`nTime to resume tasks.`n`n$Robot <b>Ping:</b> <code>$SafePing</code>`n`n$Warning <b>Status: $ClaudeStatus</b>`n<pre>$SafeResult</pre>"
 }
 
 $TgUrl = "https://api.telegram.org/bot$TelegramBotToken/sendMessage"
 $TgBody = @{
-    chat_id = $TelegramChatID
-    text    = $HtmlMessage
+    chat_id    = $TelegramChatID
+    text       = $HtmlMessage
     parse_mode = "HTML"
 } | ConvertTo-Json
 
@@ -107,6 +113,7 @@ try {
     Invoke-RestMethod -Uri $TgUrl -Method Post -ContentType "application/json; charset=utf-8" -Body $TgBody -ErrorAction Stop | Out-Null
     Write-Host "Success: Telegram notification sent with Claude's response!" -ForegroundColor Green
     Write-Host "`n--- Claude CLI Response ---`n$ClaudeResult`n---------------------------" -ForegroundColor Yellow
-} catch {
+}
+catch {
     Write-Warning "Failed to send Telegram notification: $_"
 }
