@@ -12,10 +12,8 @@ import sys
 import threading
 import time
 import traceback
-import subprocess
-import os
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import pystray  # type: ignore[import-untyped]  # no type stubs available
@@ -23,12 +21,23 @@ import pystray  # type: ignore[import-untyped]  # no type stubs available
 from .api import api_headers
 from .autostart import is_autostart_enabled, set_autostart, sync_autostart_path
 from .cache import UsageCache
+from .command import run_event_command
 from .idle import get_idle_seconds, is_workstation_locked
-from .settings import ALERT_TIME_AWARE, ALERT_TIME_AWARE_BELOW, IDLE_PAUSE, POLL_ERROR, POLL_FAST, POLL_FAST_EXTRA, POLL_INTERVAL, get_alert_thresholds, ON_RESET_COMMAND, ON_THRESHOLD_COMMAND
-from .formatting import PERIOD_5H, PERIOD_7D, elapsed_pct, format_tooltip
+from .settings import (
+    ALERT_TIME_AWARE, ALERT_TIME_AWARE_BELOW, IDLE_PAUSE, ON_RESET_COMMAND, ON_THRESHOLD_COMMAND,
+    POLL_ERROR, POLL_FAST, POLL_FAST_EXTRA, POLL_INTERVAL, get_alert_thresholds,
+)
+from .formatting import PERIOD_5H, PERIOD_7D, elapsed_pct, format_credits, format_tooltip
 from .i18n import T
 from .popup import UsagePopup
 from .tray_icon import create_icon_image, create_status_image, taskbar_uses_light_theme, watch_theme_change
+
+__all__ = ['UsageMonitorForClaude', 'crash_log']
+
+
+def _future_iso(**kwargs: float) -> str:
+    """Return an ISO 8601 timestamp offset from now by the given timedelta kwargs."""
+    return (datetime.now(timezone.utc) + timedelta(**kwargs)).isoformat()
 
 
 _VARIANT_NOTIFY_KEYS = {
@@ -72,22 +81,33 @@ class UsageMonitorForClaude:
         # Theme state
         self._light_taskbar = taskbar_uses_light_theme()
 
+        self.restart_requested = False
+
         self.icon = pystray.Icon(
             'usage_monitor',
             icon=create_icon_image(0, 0, self._light_taskbar),
             title=T['loading'],
             menu=pystray.Menu(
                 pystray.MenuItem(T['title'].replace('&', '&&'), self.on_show_popup, default=True),
+                pystray.Menu.SEPARATOR,
                 pystray.MenuItem(
                     T['autostart'], self.on_toggle_autostart,
                     checked=lambda item: is_autostart_enabled(),
                     visible=getattr(sys, 'frozen', False),
                 ),
+                pystray.MenuItem(T['test_commands'], pystray.Menu(
+                    pystray.MenuItem(T['test_reset_5h'], self.on_test_reset_5h, enabled=bool(ON_RESET_COMMAND)),
+                    pystray.MenuItem(T['test_reset_7d'], self.on_test_reset_7d, enabled=bool(ON_RESET_COMMAND)),
+                    pystray.MenuItem(T['test_threshold_5h'], self.on_test_threshold_5h, enabled=bool(ON_THRESHOLD_COMMAND)),
+                    pystray.MenuItem(T['test_threshold_7d'], self.on_test_threshold_7d, enabled=bool(ON_THRESHOLD_COMMAND)),
+                ), enabled=bool(ON_RESET_COMMAND or ON_THRESHOLD_COMMAND)),
+                pystray.MenuItem(T['restart'], self.on_restart),
+                pystray.Menu.SEPARATOR,
                 pystray.MenuItem(T['quit'], self.on_quit),
             ),
         )
 
-    # ── Menu actions ──────────────────────────────────────────
+    # Menu actions
 
     def on_show_popup(self, icon: Any = None, item: Any = None) -> None:
         with self._popup_lock:
@@ -101,11 +121,63 @@ class UsageMonitorForClaude:
     def on_toggle_autostart(self, icon: Any = None, item: Any = None) -> None:
         set_autostart(not is_autostart_enabled())
 
+    def on_restart(self, icon: Any = None, item: Any = None) -> None:
+        self.restart_requested = True
+        self.on_quit(icon, item)
+
+    def on_test_reset_5h(self, icon: Any = None, item: Any = None) -> None:
+        run_event_command(ON_RESET_COMMAND, {
+            'USAGE_MONITOR_EVENT': 'reset',
+            'USAGE_MONITOR_VARIANT': 'five_hour',
+            'USAGE_MONITOR_UTILIZATION': '0',
+            'USAGE_MONITOR_PREV_UTILIZATION': '95',
+            'USAGE_MONITOR_UTILIZATION_FIVE_HOUR': '0',
+            'USAGE_MONITOR_UTILIZATION_SEVEN_DAY': '45',
+            'USAGE_MONITOR_RESETS_AT': _future_iso(hours=5),
+            'USAGE_MONITOR_TITLE': T['notify_reset_title'],
+            'USAGE_MONITOR_MESSAGE': T['notify_reset'],
+        })
+
+    def on_test_reset_7d(self, icon: Any = None, item: Any = None) -> None:
+        run_event_command(ON_RESET_COMMAND, {
+            'USAGE_MONITOR_EVENT': 'reset',
+            'USAGE_MONITOR_VARIANT': 'seven_day',
+            'USAGE_MONITOR_UTILIZATION': '0',
+            'USAGE_MONITOR_PREV_UTILIZATION': '99',
+            'USAGE_MONITOR_UTILIZATION_FIVE_HOUR': '12',
+            'USAGE_MONITOR_UTILIZATION_SEVEN_DAY': '0',
+            'USAGE_MONITOR_RESETS_AT': _future_iso(days=7),
+            'USAGE_MONITOR_TITLE': T['notify_reset_title'],
+            'USAGE_MONITOR_MESSAGE': T['notify_reset'],
+        })
+
+    def on_test_threshold_5h(self, icon: Any = None, item: Any = None) -> None:
+        run_event_command(ON_THRESHOLD_COMMAND, {
+            'USAGE_MONITOR_EVENT': 'threshold',
+            'USAGE_MONITOR_VARIANT': 'five_hour',
+            'USAGE_MONITOR_UTILIZATION': '82',
+            'USAGE_MONITOR_THRESHOLD': '80',
+            'USAGE_MONITOR_RESETS_AT': _future_iso(hours=3),
+            'USAGE_MONITOR_TITLE': T['notify_threshold_title'],
+            'USAGE_MONITOR_MESSAGE': T['notify_threshold_five_hour'].format(pct='82'),
+        })
+
+    def on_test_threshold_7d(self, icon: Any = None, item: Any = None) -> None:
+        run_event_command(ON_THRESHOLD_COMMAND, {
+            'USAGE_MONITOR_EVENT': 'threshold',
+            'USAGE_MONITOR_VARIANT': 'seven_day',
+            'USAGE_MONITOR_UTILIZATION': '81',
+            'USAGE_MONITOR_THRESHOLD': '80',
+            'USAGE_MONITOR_RESETS_AT': _future_iso(days=4),
+            'USAGE_MONITOR_TITLE': T['notify_threshold_title'],
+            'USAGE_MONITOR_MESSAGE': T['notify_threshold_seven_day'].format(pct='81'),
+        })
+
     def on_quit(self, icon: Any = None, item: Any = None) -> None:
         self.running = False
         self.icon.stop()
 
-    # ── Popup ─────────────────────────────────────────────────
+    # Popup
 
     def _open_popup(self) -> None:
         # _popup_open is set True under _popup_lock (in on_show_popup) and
@@ -130,7 +202,7 @@ class UsageMonitorForClaude:
             self._popup_closed_at = time.time()
             self._popup_open = False
 
-    # ── Tray rendering ────────────────────────────────────────
+    # Tray rendering
 
     def _render_tray(self) -> None:
         """Re-render tray icon and tooltip from current state."""
@@ -153,7 +225,7 @@ class UsageMonitorForClaude:
         if self._last_response:
             self._render_tray()
 
-    # ── Update orchestration ──────────────────────────────────
+    # Update orchestration
 
     def update(self) -> None:
         """Request a data refresh from the cache and process the result."""
@@ -180,19 +252,16 @@ class UsageMonitorForClaude:
         # Notify when quota resets after being nearly exhausted, but only if the other quota isn't blocking usage
         if self._prev_5h is not None and self._prev_5h > 95 and pct_5h < self._prev_5h and pct_7d < 99:
             self.icon.notify(T['notify_reset'], T['notify_reset_title'])
-            if ON_RESET_COMMAND:
-                try:
-                    subprocess.Popen(ON_RESET_COMMAND, shell=True, creationflags=subprocess.CREATE_NO_WINDOW)
-                except Exception:
-                    pass
 
         if self._prev_7d is not None and self._prev_7d > 98 and pct_7d < self._prev_7d and pct_5h < 99:
             self.icon.notify(T['notify_reset'], T['notify_reset_title'])
-            if ON_RESET_COMMAND:
-                try:
-                    subprocess.Popen(ON_RESET_COMMAND, shell=True, creationflags=subprocess.CREATE_NO_WINDOW)
-                except Exception:
-                    pass
+
+
+        # Run reset command on any detected usage drop (independent of notification threshold)
+        if self._prev_5h is not None and pct_5h < self._prev_5h:
+            self._run_reset_command('five_hour', pct_5h, self._prev_5h, pct_5h=pct_5h, pct_7d=pct_7d, entry=result.data.get('five_hour', {}))
+        if self._prev_7d is not None and pct_7d < self._prev_7d:
+            self._run_reset_command('seven_day', pct_7d, self._prev_7d, pct_5h=pct_5h, pct_7d=pct_7d, entry=result.data.get('seven_day', {}))
 
         self._check_threshold_alerts(result.data)
 
@@ -204,7 +273,7 @@ class UsageMonitorForClaude:
         self._prev_5h = pct_5h
         self._prev_7d = pct_7d
 
-    # ── Notifications ─────────────────────────────────────────
+    # Notifications
 
     def _check_threshold_alerts(self, data: dict[str, Any]) -> None:
         """Show a notification when usage crosses a configured threshold.
@@ -236,21 +305,109 @@ class UsageMonitorForClaude:
                     continue
 
             if highest_exceeded > last_notified:
-                self.icon.notify(
-                    T[notify_key].format(pct=f'{pct:.0f}'),
-                    T['notify_threshold_title'],
-                )
+                title = T['notify_threshold_title']
+                message = T[notify_key].format(pct=f'{pct:.0f}')
+                self.icon.notify(message, title)
+                self._run_threshold_command(variant_key, pct, highest_exceeded, entry, title, message)
                 self._notified_thresholds[variant_key] = highest_exceeded
 
-                if ON_THRESHOLD_COMMAND:
-                    try:
-                        subprocess.Popen(ON_THRESHOLD_COMMAND, shell=True, creationflags=subprocess.CREATE_NO_WINDOW)
-                    except Exception:
-                        pass
             elif highest_exceeded < last_notified:
                 self._notified_thresholds[variant_key] = highest_exceeded
 
-    # ── Polling ───────────────────────────────────────────────
+        self._check_extra_usage_alerts(data)
+
+    def _check_extra_usage_alerts(self, data: dict[str, Any]) -> None:
+        """Show a notification when extra usage crosses a configured threshold.
+
+        Extra usage has a different data format (``used_credits`` /
+        ``monthly_limit``) and no time-based reset, so it is handled
+        separately from the sliding-window quotas.
+        """
+        extra = data.get('extra_usage')
+        if not extra or not extra.get('is_enabled'):
+            return
+
+        limit = extra.get('monthly_limit', 0) or 0
+        if limit <= 0:
+            return
+
+        used = extra.get('used_credits', 0) or 0
+        pct = used / limit * 100
+
+        thresholds = get_alert_thresholds('extra_usage')
+        if not thresholds:
+            return
+
+        exceeded = [t for t in thresholds if pct >= t]
+        highest_exceeded = max(exceeded) if exceeded else 0
+        last_notified = self._notified_thresholds.get('extra_usage', 0)
+
+        if highest_exceeded > last_notified:
+            title = T['notify_threshold_title']
+            message = T['notify_threshold_extra_usage'].format(
+                pct=f'{pct:.0f}', used=format_credits(used), limit=format_credits(limit),
+            )
+            self.icon.notify(message, title)
+            self._run_threshold_command(
+                'extra_usage', pct, highest_exceeded, extra, title, message,
+                extra_used=format_credits(used), extra_limit=format_credits(limit),
+            )
+            self._notified_thresholds['extra_usage'] = highest_exceeded
+        elif highest_exceeded < last_notified:
+            self._notified_thresholds['extra_usage'] = highest_exceeded
+
+    # Event commands
+
+    def _run_reset_command(
+        self, variant: str, pct: float, prev_pct: float, *, pct_5h: float, pct_7d: float, entry: dict[str, Any],
+    ) -> None:
+        """Run the user-configured reset command if set."""
+        if not ON_RESET_COMMAND:
+            return
+
+        run_event_command(ON_RESET_COMMAND, {
+            'USAGE_MONITOR_EVENT': 'reset',
+            'USAGE_MONITOR_VARIANT': variant,
+            'USAGE_MONITOR_UTILIZATION': str(round(pct)),
+            'USAGE_MONITOR_PREV_UTILIZATION': str(round(prev_pct)),
+            'USAGE_MONITOR_UTILIZATION_FIVE_HOUR': str(round(pct_5h)),
+            'USAGE_MONITOR_UTILIZATION_SEVEN_DAY': str(round(pct_7d)),
+            'USAGE_MONITOR_RESETS_AT': entry.get('resets_at', ''),
+            'USAGE_MONITOR_TITLE': T['notify_reset_title'],
+            'USAGE_MONITOR_MESSAGE': T['notify_reset'],
+        })
+
+    def _run_threshold_command(
+        self, variant: str, pct: float, threshold: float,
+        entry: dict[str, Any], title: str, message: str,
+        *, extra_used: str = '', extra_limit: str = '',
+    ) -> None:
+        """Run the user-configured threshold command if set.
+
+        Skipped on the first update (before ``_prev_5h`` is set) so that
+        already-exceeded thresholds at app startup do not trigger commands.
+        Notifications still fire - commands react to *events*, not *state*.
+        """
+        if not ON_THRESHOLD_COMMAND or self._prev_5h is None:
+            return
+
+        env_vars = {
+            'USAGE_MONITOR_EVENT': 'threshold',
+            'USAGE_MONITOR_VARIANT': variant,
+            'USAGE_MONITOR_UTILIZATION': str(round(pct)),
+            'USAGE_MONITOR_THRESHOLD': str(round(threshold)),
+            'USAGE_MONITOR_RESETS_AT': entry.get('resets_at', ''),
+            'USAGE_MONITOR_TITLE': title,
+            'USAGE_MONITOR_MESSAGE': message,
+        }
+        if extra_used:
+            env_vars['USAGE_MONITOR_EXTRA_USED'] = extra_used
+        if extra_limit:
+            env_vars['USAGE_MONITOR_EXTRA_LIMIT'] = extra_limit
+
+        run_event_command(ON_THRESHOLD_COMMAND, env_vars)
+
+    # Polling
 
     def _seconds_until_next_reset(self) -> float | None:
         """Return seconds until the earliest upcoming quota reset, or None."""
@@ -345,7 +502,7 @@ class UsageMonitorForClaude:
                     if lst is not None and time.time() - lst >= interval:
                         break
 
-    # ── Lifecycle ─────────────────────────────────────────────
+    # Lifecycle
 
     def _on_icon_ready(self, icon: Any) -> None:
         """Called by pystray in a separate thread once the tray icon is set up."""

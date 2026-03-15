@@ -7,7 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-[Show all code changes](https://github.com/jens-duttke/usage-monitor-for-claude/compare/v1.6.0...HEAD)
+[Show all code changes](https://github.com/jens-duttke/usage-monitor-for-claude/compare/v1.8.0...HEAD)
+
+## [1.8.0] - 2026-03-15
+
+### Added
+
+- `on_reset_command` and `on_threshold_command` settings to run shell commands when usage events occur (e.g. push notifications, agent orchestration), with event details passed as environment variables. The reset command fires on any usage drop and includes the previous utilization so your script can decide when to act
+- "Restart" option in the tray context menu to reload settings without manually closing and reopening the app
+- "Test event commands" submenu to fire configured event commands with sample data for quick verification
+
+### Fixed
+
+- Brief console window flash when checking CLI version or refreshing the authentication token
+
+[Show all code changes](https://github.com/jens-duttke/usage-monitor-for-claude/compare/v1.7.0...v1.8.0)
+
+## [1.7.0] - 2026-03-14
+
+### Added
+
+- Ukrainian language support (thanks to [@Actpohomoc](https://github.com/Actpohomoc) for the contribution)
+- Configurable alert notifications for extra usage (paid overage) via `alert_thresholds_extra_usage` setting (default: 50%, 80%, 95%)
+
+### Changed
+
+- Usage bars now turn red only when usage passes the time marker (usage ahead of elapsed time), instead of always at 80%
+- **Breaking:** Setting `bar_fg_high` renamed to `bar_fg_warn`
+
+[Show all code changes](https://github.com/jens-duttke/usage-monitor-for-claude/compare/v1.6.0...v1.7.0)
 
 ## [1.6.0] - 2026-03-10
 

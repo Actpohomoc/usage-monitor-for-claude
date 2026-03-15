@@ -180,7 +180,19 @@ class TestSettingsOverrides(unittest.TestCase):
     def test_partial_override_keeps_defaults(self):
         """Unspecified keys retain their default values."""
         settings = {'poll_interval': 300}
-        self._assert_overrides(settings, [('POLL_INTERVAL', 300), ('POLL_FAST', 60), ('BG', '#1e1e1e')])
+        self._assert_overrides(settings, [
+            ('POLL_INTERVAL', 300), ('POLL_FAST', 60), ('BG', '#1e1e1e'),
+            ('ALERT_THRESHOLDS_EXTRA_USAGE', [50, 80, 95]),
+        ])
+
+    def test_threshold_overrides(self):
+        """Alert threshold lists are overridden by settings."""
+        settings = {'alert_thresholds_extra_usage': [70, 90], 'alert_thresholds_five_hour': [80]}
+        self._assert_overrides(settings, [
+            ('ALERT_THRESHOLDS_EXTRA_USAGE', [70, 90]),
+            ('ALERT_THRESHOLDS_FIVE_HOUR', [80]),
+            ('ALERT_THRESHOLDS_SEVEN_DAY', [95]),
+        ])
 
     def test_icon_color_override(self):
         """Icon color dicts are merged, JSON arrays become tuples."""
@@ -205,7 +217,10 @@ class TestSettingsOverrides(unittest.TestCase):
     _DEFAULTS = {
         'POLL_INTERVAL': 120, 'POLL_FAST': 60, 'POLL_FAST_EXTRA': 2, 'POLL_ERROR': 30,
         'BG': '#1e1e1e', 'FG': '#cccccc', 'FG_DIM': '#888888', 'FG_HEADING': '#ffffff',
-        'BAR_BG': '#333333', 'BAR_FG': '#4a9eff', 'BAR_FG_HIGH': '#e05050',
+        'BAR_BG': '#333333', 'BAR_FG': '#4a9eff', 'BAR_FG_WARN': '#e05050',
+        'ALERT_THRESHOLDS_FIVE_HOUR': [50, 80, 95], 'ALERT_THRESHOLDS_SEVEN_DAY': [95],
+        'ALERT_THRESHOLDS_EXTRA_USAGE': [50, 80, 95],
+        'ALERT_TIME_AWARE': True, 'ALERT_TIME_AWARE_BELOW': 90,
     }
 
     def _assert_overrides(self, settings: dict, expected: list[tuple[str, object]]) -> None:
@@ -317,7 +332,7 @@ class TestSettingsValidation(unittest.TestCase):
         self.assertEqual(result['poll_fast'], 60)
         self.assertEqual(result['bg'], '#000')
 
-    # ── Non-negative numeric validation ─────────────────────────
+    # Non-negative numeric validation
 
     def test_idle_pause_zero_valid(self):
         """Value 0 for idle_pause is valid (disables idle detection)."""
@@ -354,7 +369,7 @@ class TestSettingsValidation(unittest.TestCase):
         self.assertNotIn('idle_pause', result)
         mock.windll.user32.MessageBoxW.assert_called_once()
 
-    # ── Threshold array validation ─────────────────────────────
+    # Threshold array validation
 
     def test_valid_threshold_array(self):
         """Valid threshold array passes through without MessageBox."""
@@ -417,7 +432,7 @@ class TestSettingsValidation(unittest.TestCase):
         result, _ = self._run_validate({'alert_thresholds_seven_day': 'bad'})
         self.assertNotIn('alert_thresholds_seven_day', result)
 
-    # ── Percent key validation ─────────────────────────────────
+    # Percent key validation
 
     def test_alert_time_aware_below_valid(self):
         """Valid number for alert_time_aware_below passes through."""
@@ -454,7 +469,7 @@ class TestSettingsValidation(unittest.TestCase):
         result, _ = self._run_validate({'alert_time_aware_below': True})
         self.assertNotIn('alert_time_aware_below', result)
 
-    # ── Boolean key validation ──────────────────────────────────
+    # Boolean key validation
 
     def test_alert_time_aware_true_valid(self):
         """Boolean true for alert_time_aware passes through."""
@@ -478,6 +493,32 @@ class TestSettingsValidation(unittest.TestCase):
         """String 'true' for alert_time_aware is dropped."""
         result, mock = self._run_validate({'alert_time_aware': 'true'})
         self.assertNotIn('alert_time_aware', result)
+        mock.windll.user32.MessageBoxW.assert_called_once()
+
+    # String command validation
+
+    def test_on_reset_command_string_valid(self):
+        """String value for on_reset_command passes through."""
+        result, mock = self._run_validate({'on_reset_command': 'echo hello'})
+        self.assertEqual(result['on_reset_command'], 'echo hello')
+        mock.windll.user32.MessageBoxW.assert_not_called()
+
+    def test_on_reset_command_non_string_dropped(self):
+        """Non-string value for on_reset_command is dropped."""
+        result, mock = self._run_validate({'on_reset_command': 42})
+        self.assertNotIn('on_reset_command', result)
+        mock.windll.user32.MessageBoxW.assert_called_once()
+
+    def test_on_threshold_command_string_valid(self):
+        """String value for on_threshold_command passes through."""
+        result, mock = self._run_validate({'on_threshold_command': 'powershell -File notify.ps1'})
+        self.assertEqual(result['on_threshold_command'], 'powershell -File notify.ps1')
+        mock.windll.user32.MessageBoxW.assert_not_called()
+
+    def test_on_threshold_command_non_string_dropped(self):
+        """Non-string value for on_threshold_command is dropped."""
+        result, mock = self._run_validate({'on_threshold_command': True})
+        self.assertNotIn('on_threshold_command', result)
         mock.windll.user32.MessageBoxW.assert_called_once()
 
     def _run_validate(self, data: dict) -> tuple[dict, MagicMock]:
@@ -514,6 +555,12 @@ class TestGetAlertThresholds(unittest.TestCase):
         thresholds = {'five_hour': [70], 'seven_day': [80, 95], 'seven_day_sonnet': [80, 95], 'seven_day_opus': [80, 95]}
         with patch.object(settings_mod, '_ALERT_THRESHOLDS', thresholds):
             self.assertEqual(settings_mod.get_alert_thresholds('seven_day_opus'), [80, 95])
+
+    def test_extra_usage_returns_own_thresholds(self):
+        """extra_usage variant returns its own thresholds."""
+        thresholds = {'five_hour': [70], 'seven_day': [80, 95], 'seven_day_sonnet': [80, 95], 'seven_day_opus': [80, 95], 'extra_usage': [50, 80, 95]}
+        with patch.object(settings_mod, '_ALERT_THRESHOLDS', thresholds):
+            self.assertEqual(settings_mod.get_alert_thresholds('extra_usage'), [50, 80, 95])
 
     def test_unknown_variant_returns_empty(self):
         """Unknown variant key returns empty list."""

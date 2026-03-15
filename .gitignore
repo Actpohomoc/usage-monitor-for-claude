@@ -19,6 +19,12 @@ dist/
 .vscode/
 .idea/
 
+# Claude Code
+.claude/settings.json
+
+# User settings
+usage-monitor-settings.json
+
 # OS
 Thumbs.db
 Desktop.ini
@@ -31,3 +37,4 @@ dist copy/UsageMonitorForClaude.exe
 build_full_log.txt
 usage-monitor-settings.json
 .agent/
+docs/

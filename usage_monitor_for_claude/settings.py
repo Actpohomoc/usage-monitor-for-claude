@@ -11,7 +11,7 @@ any constant.  Search order:
 1. Next to the executable (frozen) or project root (source)
 2. ``~/.claude/usage-monitor-settings.json``
 
-The app never creates this file — users place it manually.
+The app never creates this file - users place it manually.
 """
 from __future__ import annotations
 
@@ -20,6 +20,20 @@ import json
 import locale as _locale
 import sys
 from pathlib import Path
+
+__all__ = [
+    'ALERT_THRESHOLDS_EXTRA_USAGE', 'ALERT_THRESHOLDS_FIVE_HOUR', 'ALERT_THRESHOLDS_SEVEN_DAY',
+    'ALERT_TIME_AWARE', 'ALERT_TIME_AWARE_BELOW',
+    'BAR_BG', 'BAR_FG', 'BAR_FG_WARN', 'BG',
+    'CURRENCY_SYMBOL',
+    'FG', 'FG_DIM', 'FG_HEADING',
+    'ICON_DARK', 'ICON_LIGHT', 'IDLE_PAUSE',
+    'LANGUAGE', 'MAX_BACKOFF',
+    'ON_RESET_COMMAND', 'ON_THRESHOLD_COMMAND',
+    'POLL_ERROR', 'POLL_FAST', 'POLL_FAST_EXTRA', 'POLL_INTERVAL',
+    'SETTINGS_FILENAME',
+    'get_alert_thresholds',
+]
 
 SETTINGS_FILENAME = 'usage-monitor-settings.json'
 
@@ -31,9 +45,9 @@ _NUMERIC_BOUNDS: dict[str, int] = {
     'max_backoff': 1,
     'idle_pause': 0,
 }
-_COLOR_KEYS = frozenset({'bg', 'fg', 'fg_dim', 'fg_heading', 'bar_bg', 'bar_fg', 'bar_fg_high'})
+_COLOR_KEYS = frozenset({'bg', 'fg', 'fg_dim', 'fg_heading', 'bar_bg', 'bar_fg', 'bar_fg_warn'})
 _ICON_KEYS = frozenset({'icon_light', 'icon_dark'})
-_THRESHOLD_KEYS = frozenset({'alert_thresholds_five_hour', 'alert_thresholds_seven_day'})
+_THRESHOLD_KEYS = frozenset({'alert_thresholds_five_hour', 'alert_thresholds_seven_day', 'alert_thresholds_extra_usage'})
 _PERCENT_KEYS = frozenset({'alert_time_aware_below'})
 _STRING_KEYS = frozenset({'currency_symbol', 'language', 'on_reset_command', 'on_threshold_command'})
 _BOOL_KEYS = frozenset({'alert_time_aware'})
@@ -156,7 +170,7 @@ def _icon_colors(key: str, defaults: dict[str, tuple]) -> dict[str, tuple]:
 
 _S = _load_settings()
 
-# ── Polling intervals (seconds) ───────────────────────────────
+# Polling intervals (seconds)
 POLL_INTERVAL = _S.get('poll_interval', 180)
 POLL_FAST = _S.get('poll_fast', 120)
 POLL_FAST_EXTRA = _S.get('poll_fast_extra', 2)
@@ -164,16 +178,16 @@ POLL_ERROR = _S.get('poll_error', 30)
 MAX_BACKOFF = _S.get('max_backoff', 900)
 IDLE_PAUSE = _S.get('idle_pause', 300)
 
-# ── Popup theme ───────────────────────────────────────────────
+# Popup theme
 BG = _S.get('bg', '#1e1e1e')
 FG = _S.get('fg', '#cccccc')
 FG_DIM = _S.get('fg_dim', '#888888')
 FG_HEADING = _S.get('fg_heading', '#ffffff')
 BAR_BG = _S.get('bar_bg', '#333333')
 BAR_FG = _S.get('bar_fg', '#4a9eff')
-BAR_FG_HIGH = _S.get('bar_fg_high', '#e05050')
+BAR_FG_WARN = _S.get('bar_fg_warn', '#e05050')
 
-# ── Tray icon colors ─────────────────────────────────────────
+# Tray icon colors
 ICON_LIGHT = _icon_colors('icon_light', {
     'fg': (255, 255, 255, 255),
     'fg_half': (255, 255, 255, 80),
@@ -185,13 +199,14 @@ ICON_DARK = _icon_colors('icon_dark', {
     'fg_dim': (0, 0, 0, 140),
 })
 
-# ── Alert thresholds ────────────────────────────────────────
+# Alert thresholds
 ALERT_THRESHOLDS_FIVE_HOUR: list[float] = _S.get('alert_thresholds_five_hour', [50, 80, 95])
 ALERT_THRESHOLDS_SEVEN_DAY: list[float] = _S.get('alert_thresholds_seven_day', [95])
+ALERT_THRESHOLDS_EXTRA_USAGE: list[float] = _S.get('alert_thresholds_extra_usage', [50, 80, 95])
 ALERT_TIME_AWARE: bool = _S.get('alert_time_aware', True)
 ALERT_TIME_AWARE_BELOW: float = _S.get('alert_time_aware_below', 90)
 
-# ── Currency ───────────────────────────────────────────────
+# Currency
 
 def _detect_currency_symbol() -> str:
     """Detect the system locale currency symbol for monetary formatting."""
@@ -205,33 +220,36 @@ def _detect_currency_symbol() -> str:
 _SYSTEM_CURRENCY_SYMBOL = _detect_currency_symbol()
 CURRENCY_SYMBOL: str = _S.get('currency_symbol', _SYSTEM_CURRENCY_SYMBOL)
 
-# ── Language override ──────────────────────────────────────
+# Language override
 LANGUAGE: str = _S.get('language', '')
+
+# Event commands
+ON_RESET_COMMAND: str = _S.get('on_reset_command', '')
+ON_THRESHOLD_COMMAND: str = _S.get('on_threshold_command', '')
 
 _ALERT_THRESHOLDS = {
     'five_hour': ALERT_THRESHOLDS_FIVE_HOUR,
     'seven_day': ALERT_THRESHOLDS_SEVEN_DAY,
     'seven_day_sonnet': ALERT_THRESHOLDS_SEVEN_DAY,
     'seven_day_opus': ALERT_THRESHOLDS_SEVEN_DAY,
+    'extra_usage': ALERT_THRESHOLDS_EXTRA_USAGE,
 }
 
 
 def get_alert_thresholds(variant_key: str) -> list[float]:
     """Return the alert thresholds for a usage variant.
 
-    Session (5h) and weekly (7d) quotas use separate threshold lists.
-    All weekly variants (general, Sonnet, Opus) share the same thresholds.
-    An empty list means alerts are disabled.
+    Session (5h), weekly (7d), and extra usage quotas each use separate
+    threshold lists.  All weekly variants (general, Sonnet, Opus) share
+    the same thresholds.  An empty list means alerts are disabled.
 
     Parameters
     ----------
     variant_key : str
-        API variant key, e.g. ``'five_hour'`` or ``'seven_day_sonnet'``.
+        API variant key, e.g. ``'five_hour'``, ``'seven_day_sonnet'``,
+        or ``'extra_usage'``.
     """
     return _ALERT_THRESHOLDS.get(variant_key, [])
 
 
-# ── Custom Commands ────────────────────────────────────────
-ON_RESET_COMMAND: str = _S.get('on_reset_command', '')
-ON_THRESHOLD_COMMAND: str = _S.get('on_threshold_command', '')
 
