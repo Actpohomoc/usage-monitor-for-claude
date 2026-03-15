@@ -181,11 +181,16 @@ API Anthropic не містить інформації про валюту, то
 
 ### Налаштування
 
+> [!IMPORTANT]
+> Усі Python-команди (запуск програми, запуск тестів або побудова EXE) **повинні** виконуватися у віртуальному середовищі.
+
 ```bash
 git clone https://github.com/jens-duttke/usage-monitor-for-claude.git
 cd usage-monitor-for-claude
-python -m venv .venv
-.venv\Scripts\activate
+# Створення та активація venv
+if (!(Test-Path .\venv)) { python -m venv venv }
+.\venv\Scripts\activate
+# Встановлення залежностей
 pip install -r requirements.txt
 ```
 

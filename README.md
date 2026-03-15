@@ -181,11 +181,16 @@ Override individual channels as RGBA arrays `[R, G, B, A]` (0вЂ“255). Unspec
 
 ### Setup
 
+> [!IMPORTANT]
+> All Python commands (running the app, running tests, or building the EXE) **must** be executed within the virtual environment.
+
 ```bash
 git clone https://github.com/jens-duttke/usage-monitor-for-claude.git
 cd usage-monitor-for-claude
-python -m venv .venv
-.venv\Scripts\activate
+# Create and activate venv
+if (!(Test-Path .\venv)) { python -m venv venv }
+.\venv\Scripts\activate
+# Install requirements
 pip install -r requirements.txt
 ```
 

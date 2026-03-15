@@ -30,3 +30,4 @@ claude_response.log
 dist copy/UsageMonitorForClaude.exe
 build_full_log.txt
 usage-monitor-settings.json
+.agent/workflows/build.md

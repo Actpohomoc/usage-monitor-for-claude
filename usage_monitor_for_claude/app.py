@@ -307,9 +307,11 @@ class UsageMonitorForClaude:
             return True
         return IDLE_PAUSE > 0 and get_idle_seconds() >= IDLE_PAUSE
 
-    def _wait_for_activity(self) -> None:
-        """Block until user activity resumes or the app is stopping."""
+    def _wait_for_activity(self, until: float | None = None) -> None:
+        """Block until user activity resumes, the app is stopping, or a target time is reached."""
         while self.running and self._is_user_away():
+            if until is not None and time.time() >= until:
+                break
             time.sleep(2)
 
     def poll_loop(self) -> None:
@@ -336,7 +338,7 @@ class UsageMonitorForClaude:
 
                 # Pause polling while the user is away
                 if self._is_user_away():
-                    self._wait_for_activity()
+                    self._wait_for_activity(until=target)
                     # After resuming: poll immediately if interval has
                     # elapsed, otherwise let the loop re-evaluate
                     lst = self.cache.last_success_time
