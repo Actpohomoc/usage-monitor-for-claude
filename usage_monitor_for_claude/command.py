@@ -49,7 +49,7 @@ def run_event_command(command: str, env_vars: dict[str, str]) -> None:
         working_dir = Path(__file__).resolve().parent.parent
 
     try:
-        log_path = working_dir / 'command_errors.log'
+        log_path = working_dir / 'commands_output.log'
         # Open for appending. Handle is inherited by subprocess.
         # We don't use 'with' here because the subprocess is asynchronous.
         # The OS will close it when the subprocess (and its parent) exits,

@@ -38,5 +38,5 @@ build_full_log.txt
 usage-monitor-settings.json
 .agent/
 docs/
-command_errors.log
+commands_output.log
 test_logging_manual.py

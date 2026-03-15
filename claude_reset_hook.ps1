@@ -21,7 +21,7 @@ $TelegramBotToken = $env:CLAUDE_TG_BOT_TOKEN
 $TelegramChatID = $env:CLAUDE_TG_CHAT_ID
 
 if (-not ($TelegramBotToken -and $TelegramChatID)) {
-    Write-Warning "Telegram credentials missing. Check .env file."
+    Write-Output "WARNING: Telegram credentials missing. Check .env file."
     exit
 }
 
@@ -45,7 +45,7 @@ try {
     }
 
     if ($ExePath) {
-        Write-Host "Pinging Claude CLI (Timeout: 30s)..." -ForegroundColor Cyan
+        Write-Output "Pinging Claude CLI (Timeout: 30s)..."
         
         $LogFile = Join-Path $PSScriptRoot "claude_temp_$PID.log"
         
@@ -83,8 +83,8 @@ catch {
 
 # --- SEND TO TELEGRAM ---
 if ($DryRun -or $env:USAGE_MONITOR_DRY_RUN -eq "1") {
-    Write-Host "[DRY RUN] Skipping Telegram notification." -ForegroundColor Yellow
-    Write-Host "`n--- Claude CLI Response ---`n$ClaudeResult`n---------------------------" -ForegroundColor Yellow
+    Write-Output "[DRY RUN] Skipping Telegram notification."
+    Write-Output "`n--- Claude CLI Response ---`n$ClaudeResult`n---------------------------"
     exit
 }
 

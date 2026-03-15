@@ -79,7 +79,7 @@ class TestRunEventCommand(unittest.TestCase):
         self.assertIn("Executing: test_cmd", all_writes)
 
         mock_open.assert_called_once()
-        self.assertIn('command_errors.log', str(mock_open.call_args[0][0]))
+        self.assertIn('commands_output.log', str(mock_open.call_args[0][0]))
 
     @patch('usage_monitor_for_claude.command.open')
     @patch('usage_monitor_for_claude.command.subprocess.Popen')
