@@ -453,7 +453,7 @@ class UsageMonitorForClaude:
         # regardless of user activity (quota was likely exhausted).
         next_reset = self._seconds_until_next_reset()
         if next_reset is not None and next_reset + 5 <= interval * 1.5:
-            interval = max(int(next_reset) + 5, POLL_FAST)
+            interval = max(int(next_reset) + 5, 5)
             self._fast_polls_remaining = max(self._fast_polls_remaining, 2)
 
         return interval

@@ -1,8 +1,10 @@
-﻿<#
+<#
 .SYNOPSIS
 Hook script called upon Claude quota reset.
 Pings Claude CLI in background and sends Telegram notification with the response.
 #>
+
+param([switch]$DryRun)
 
 # --- SETTINGS ---
 $EnvFile = Join-Path $PSScriptRoot ".env"
@@ -45,10 +47,10 @@ try {
     if ($ExePath) {
         Write-Host "Pinging Claude CLI (Timeout: 30s)..." -ForegroundColor Cyan
         
-        $LogFile = Join-Path $PSScriptRoot "claude_temp_response.log"
+        $LogFile = Join-Path $PSScriptRoot "claude_temp_$PID.log"
         
         $Process = Start-Process -FilePath $ExePath -ArgumentList "`"$RandomPrompt`"" -NoNewWindow -PassThru -RedirectStandardOutput $LogFile
-        $WaitResult = $Process | Wait-Process -Timeout 30 -ErrorAction SilentlyContinue
+        $Process | Wait-Process -Timeout 30 -ErrorAction SilentlyContinue
         
         if (-not $Process.HasExited) {
             $ClaudeResult = "Claude CLI timed out after 30 seconds."
@@ -80,6 +82,12 @@ catch {
 }
 
 # --- SEND TO TELEGRAM ---
+if ($DryRun -or $env:USAGE_MONITOR_DRY_RUN -eq "1") {
+    Write-Host "[DRY RUN] Skipping Telegram notification." -ForegroundColor Yellow
+    Write-Host "`n--- Claude CLI Response ---`n$ClaudeResult`n---------------------------" -ForegroundColor Yellow
+    exit
+}
+
 $Rocket = [char]::ConvertFromUtf32(0x1F680)
 
 # Limit Claude result length for Telegram to avoid message size limits

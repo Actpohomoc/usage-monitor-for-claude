@@ -14,6 +14,7 @@ import os
 import subprocess
 import sys
 import traceback
+from datetime import datetime
 from pathlib import Path
 
 __all__ = ['run_event_command']
@@ -48,9 +49,21 @@ def run_event_command(command: str, env_vars: dict[str, str]) -> None:
         working_dir = Path(__file__).resolve().parent.parent
 
     try:
+        log_path = working_dir / 'command_errors.log'
+        # Open for appending. Handle is inherited by subprocess.
+        # We don't use 'with' here because the subprocess is asynchronous.
+        # The OS will close it when the subprocess (and its parent) exits,
+        # or we accept the single leak per app-lifetime of this specific handle
+        # in exchange for correctness since we are 'fire-and-forget'.
+        # Actually, Python's GC will close it eventually if the process is long-running,
+        # but the subprocess will keep its own copy of the descriptor on most OSs.
+        log_file = open(log_path, 'a', encoding='utf-8')
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        log_file.write(f"\n[{timestamp}] Executing: {command}\n")
+        log_file.flush()
         subprocess.Popen(
             command, shell=True, env=env, cwd=working_dir,
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            stdout=log_file, stderr=subprocess.STDOUT,
             creationflags=subprocess.CREATE_NO_WINDOW,
         )
     except Exception:

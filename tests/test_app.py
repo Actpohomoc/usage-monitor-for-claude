@@ -7,9 +7,13 @@ tray rendering, polling interval, and reset notifications.
 """
 from __future__ import annotations
 
+import os
 import unittest
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
+
+# Prevent real notifications during automated tests
+os.environ['USAGE_MONITOR_DRY_RUN'] = '1'
 
 from usage_monitor_for_claude.app import UsageMonitorForClaude
 from usage_monitor_for_claude.cache import UpdateResult
@@ -1459,6 +1463,32 @@ class TestTestEventCommands(unittest.TestCase):
 
         env = mock_cmd.call_args[0][1]
         self.assertIn('82', env['USAGE_MONITOR_MESSAGE'])
+
+    @patch('usage_monitor_for_claude.app.ON_RESET_COMMAND', 'reset.ps1')
+    @patch('usage_monitor_for_claude.app.run_event_command')
+    def test_reset_notification_fires_on_total_reset_with_no_future_time(self, mock_cmd):
+        """Test that reset command fires even when usage drops to 0% and API gives no reset date."""
+        # 1. Start with high usage
+        self.app._prev_5h = 95.0
+        
+        # 2. Simulate API returning 0% and None for next reset
+        # UsageMonitor.update calls self.cache.update()
+        data = {
+            'five_hour': {'utilization': 0.0},
+            'seven_day': {'utilization': 40.0}
+        }
+        self.app.cache = MagicMock()
+        self.app.cache.update.return_value = UpdateResult(data=data, token_refresh=None)
+        
+        self.app.update()
+        
+        # 3. Verify notification was triggered
+        mock_cmd.assert_called_once()
+        cmd, env = mock_cmd.call_args[0]
+        self.assertEqual(env['USAGE_MONITOR_EVENT'], 'reset')
+        self.assertEqual(env['USAGE_MONITOR_VARIANT'], 'five_hour')
+        self.assertEqual(env['USAGE_MONITOR_UTILIZATION'], '0')
+        self.assertIn('USAGE_MONITOR_RESETS_AT', env) # Should contain fallback ISO Time
 
 
 if __name__ == '__main__':
