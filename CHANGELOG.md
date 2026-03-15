@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Manual quota refresh by clicking the status line ("Updated X minutes ago") in the detail popup, allowing you to bypass the update cooldown when you need immediate feedback
+
 [Show all code changes](https://github.com/jens-duttke/usage-monitor-for-claude/compare/v1.8.0...HEAD)
 
 ## [1.8.0] - 2026-03-15

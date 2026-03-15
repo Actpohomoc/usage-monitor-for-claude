@@ -356,9 +356,11 @@ class UsagePopup:
             tk.Frame(self._status_frame, bg=BAR_BG, height=1).pack(fill='x', pady=(10, 4))
         self._status_label = tk.Label(
             self._status_frame, text='', fg=FG_DIM, bg=BG,
-            font=('Segoe UI', 8), wraplength=self.WIDTH - 32, justify='left',
+            font=('Segoe UI', 8, 'underline'), wraplength=self.WIDTH - 32, justify='left',
+            cursor='hand2',
         )
         self._status_label.pack(anchor='w')
+        self._status_label.bind('<Button-1>', lambda e: self._on_status_click())
 
         self._update_status_line()
 
@@ -388,6 +390,15 @@ class UsagePopup:
             self._status_fg = fg
             self._status_label.configure(text=text, fg=fg)
             self._position_near_tray()
+
+    def _on_status_click(self) -> None:
+        """Handle manual refresh click on the status line."""
+        self.app.force_update()
+        # Snappy feedback: trigger immediate status label update to show "Refreshing..."
+        try:
+            self.win.after(10, self._update_status_line)
+        except tk.TclError:
+            pass
 
     def _update_countdowns(self) -> None:
         """Refresh reset countdown texts and elapsed markers between API polls."""

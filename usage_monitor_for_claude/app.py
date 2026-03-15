@@ -225,11 +225,15 @@ class UsageMonitorForClaude:
         if self._last_response:
             self._render_tray()
 
+    def force_update(self) -> None:
+        """Trigger a background forced update safely."""
+        threading.Thread(target=lambda: self.update(force=True), daemon=True).start()
+
     # Update orchestration
 
-    def update(self) -> None:
+    def update(self, force: bool = False) -> None:
         """Request a data refresh from the cache and process the result."""
-        result = self.cache.update()
+        result = self.cache.update(force=force)
         if result.data is None:
             return
 

@@ -415,6 +415,15 @@ class TestUpdateOrchestration(unittest.TestCase):
 
         self.assertEqual(self.app._last_response, {})
 
+    def test_update_passes_force_flag(self):
+        """update(force=True) passes the flag to cache.update()."""
+        self.app.cache = MagicMock()
+        self.app.cache.update.return_value = UpdateResult(data=None)
+
+        self.app.update(force=True)
+
+        self.app.cache.update.assert_called_once_with(force=True)
+
     @patch('usage_monitor_for_claude.app.format_tooltip', return_value='tooltip')
     @patch('usage_monitor_for_claude.app.create_icon_image')
     def test_success_updates_last_response(self, _icon, _tooltip):
