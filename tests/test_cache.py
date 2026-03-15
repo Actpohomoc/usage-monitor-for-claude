@@ -448,6 +448,26 @@ class TestRateLimitGuard(unittest.TestCase):
         self.assertIsNotNone(result.data)
         mock_fetch.assert_called_once()
 
+    @patch('usage_monitor_for_claude.cache.fetch_usage', return_value=_SUCCESS_DATA)
+    @patch('usage_monitor_for_claude.cache.time')
+    def test_force_update_bypasses_rate_limit(self, mock_time, mock_fetch):
+        """When force=True, update() proceeds even if rate-limit backoff is active."""
+        cache = _make_cache()
+        mock_time.time.return_value = 1000.0
+        # Set an active rate limit
+        cache._rate_limit_until = 1500.0
+
+        # Non-forced update is skipped
+        result = cache.update(force=False)
+        self.assertIsNone(result.data)
+        mock_fetch.assert_not_called()
+
+        # Forced update proceeds
+        result = cache.update(force=True)
+        self.assertIsNotNone(result.data)
+        mock_fetch.assert_called_once()
+
+
 
 # ---------------------------------------------------------------------------
 # rate_limit_remaining property

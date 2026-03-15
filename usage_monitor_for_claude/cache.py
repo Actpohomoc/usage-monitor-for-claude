@@ -178,7 +178,7 @@ class UsageCache:
             log.debug('update skipped (cooldown, %.0fs remaining)', POLL_FAST - (time.time() - self._last_success_time))
             return UpdateResult(data=None)
 
-        if time.time() < self._rate_limit_until:
+        if not force and time.time() < self._rate_limit_until:
             log.debug('update skipped (rate-limit backoff, %.0fs remaining)', self._rate_limit_until - time.time())
             return UpdateResult(data=None)
 
